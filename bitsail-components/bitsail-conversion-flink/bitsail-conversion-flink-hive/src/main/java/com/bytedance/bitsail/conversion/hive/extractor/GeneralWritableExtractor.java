@@ -120,7 +120,7 @@ public class GeneralWritableExtractor extends HiveWritableExtractor {
     if (value instanceof Long) {
       return new LongColumn((Long) value);
     }
-    if (value instanceof Date){
+    if (value instanceof Date) {
       return new DateColumn((Date) value);
     }
     return null;
