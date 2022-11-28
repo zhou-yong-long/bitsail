@@ -19,6 +19,9 @@ package com.bytedance.bitsail.conversion.hive.extractor;
 
 import com.bytedance.bitsail.common.BitSailException;
 import com.bytedance.bitsail.common.column.Column;
+import com.bytedance.bitsail.common.column.DateColumn;
+import com.bytedance.bitsail.common.column.LongColumn;
+import com.bytedance.bitsail.common.column.StringColumn;
 import com.bytedance.bitsail.common.exception.CommonErrorCode;
 import com.bytedance.bitsail.conversion.hive.BitSailColumnConversion;
 import com.bytedance.bitsail.conversion.hive.ConvertToHiveObjectOptions;
@@ -36,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 public class GeneralWritableExtractor extends HiveWritableExtractor {
@@ -73,6 +77,9 @@ public class GeneralWritableExtractor extends HiveWritableExtractor {
 
   @Override
   public Object createRowObject(Row record) {
+
+    LOG.info("row kind:{}", record.getKind().toString());
+    LOG.info("row record:{}", record.toString());
     String columnName = "";
     try {
       List<Object> fields = Arrays.asList(new Object[inspector.getAllStructFieldRefs().size()]);
@@ -80,7 +87,13 @@ public class GeneralWritableExtractor extends HiveWritableExtractor {
       Column column;
       Object hiveObject;
       for (int i = 0; i < record.getArity(); i++) {
-        column = (Column) record.getField(i);
+        column = this.coverObjectToColumn(record.getField(i));
+
+        if (column == null) {
+          LOG.error("column is null: {}", record.getField(i));
+          continue;
+        }
+
         columnName = fieldNames[i].toUpperCase();
         hiveIndex = columnMapping.get(columnName);
         if (column.getRawData() == null) {
@@ -95,6 +108,22 @@ public class GeneralWritableExtractor extends HiveWritableExtractor {
     } catch (Exception e) {
       throw BitSailException.asBitSailException(CommonErrorCode.CONVERT_NOT_SUPPORT, String.format("column[%s] %s", columnName, e.getMessage()));
     }
+  }
+
+  private Column coverObjectToColumn(Object value) {
+    if (value instanceof Column) {
+      return (Column) value;
+    }
+    if (value instanceof String) {
+      return new StringColumn((String) value);
+    }
+    if (value instanceof Long) {
+      return new LongColumn((Long) value);
+    }
+    if (value instanceof Date){
+      return new DateColumn((Date) value);
+    }
+    return null;
   }
 
   /**
